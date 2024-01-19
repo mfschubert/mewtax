@@ -44,7 +44,9 @@ def minimize_newton(
     Returns:
         The pytree argmin of the function.
     """
-    z_init_flat, unflatten_z_fn = flatten_util.ravel_pytree(z_init)  # type: ignore[no-untyped-call]
+    z_init_flat, unflatten_z_fn = flatten_util.ravel_pytree(
+        z_init
+    )  # type: ignore[no-untyped-call]
 
     def flat_fn(params: jnp.ndarray, z_flat: jnp.ndarray) -> jnp.ndarray:
         return fn(params, unflatten_z_fn(z_flat))
@@ -178,7 +180,7 @@ def _newton_solve_fixed_point(
     def g_fn(z: jnp.ndarray) -> jnp.ndarray:
         jac = jax.jacfwd(root_fn, holomorphic=holomorphic)(z)
         z_next: jnp.ndarray = z - jnp.linalg.solve(jac, root_fn(z))
-        return z_next
+        is_problematic_jac = jnp.allclose(jac, 0)
+        return jnp.where(is_problematic_jac, root_fn(z), z_next)
 
-    sol = _fwd_solve_fixed_point(g_fn, z_init, tol, max_iter)
-    return sol
+    return _fwd_solve_fixed_point(g_fn, z_init, tol, max_iter)
