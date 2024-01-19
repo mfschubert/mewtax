@@ -1,6 +1,5 @@
 """Tests for mewtax."""
 
-import functools
 import itertools
 import unittest
 

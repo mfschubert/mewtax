@@ -34,7 +34,7 @@ def minimize_newton(
     Args:
         fn: The function to be minimized, with signature `fn(a, z) -> y`. Each of the
             arguments may be an arbitrary pytree, while the output must be a scalar.
-        a: Pytree parameterizing the function.
+        params: Pytree parameterizing the function.
         z_init: Pytree giving the initial guess for the argmin of `fn`.
         tol: Tolerance for convergence. Default value is 1e-5.
         max_iter: Maximum number of iterations for the solver. No more than this
