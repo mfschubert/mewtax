@@ -41,7 +41,8 @@ def minimize_newton(
         max_iter: Maximum number of iterations for the solver. No more than this
             number of iterations is performed, regardless of whether the minimization
             has converged. Default value is 20.
-        eps: Small positive value used to regularize the minimization problem.
+        eps: Small positive value used to regularize the minimization problem. Default
+            value is 1e-8.
 
     Returns:
         The pytree argmin of the function.
@@ -54,7 +55,7 @@ def minimize_newton(
     if is_complex:
         z_init_flat = jnp.concatenate([z_init_flat.real, z_init_flat.imag])
 
-    def unflatten_z_fn(z_flat):
+    def unflatten_z_fn(z_flat: jnp.ndarray) -> PyTree:
         if not is_complex:
             return _unflatten_z_fn(z_flat)
         z_flat_real, z_flat_imag = jnp.split(z_flat, 2)
@@ -62,7 +63,8 @@ def minimize_newton(
         return _unflatten_z_fn(z_flat)
 
     def flat_fn(params: PyTree, z_flat: jnp.ndarray) -> jnp.ndarray:
-        return fn(params, unflatten_z_fn(z_flat)) + eps * jnp.linalg.norm(z_flat)**2
+        regularization: jnp.ndarray = eps * jnp.linalg.norm(z_flat) ** 2
+        return fn(params, unflatten_z_fn(z_flat)) + regularization
 
     z_flat = _minimize_newton(
         flat_fn,

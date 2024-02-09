@@ -4,26 +4,26 @@ import itertools
 import unittest
 
 import jax
-
-jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import numpy as onp
-import pytest
 from jax import flatten_util, tree_util
 from parameterized import parameterized
 
 import mewtax
 
+jax.config.update("jax_enable_x64", True)
+
 
 def minimize_newton_naive(fn, params, z_init, tol=1e-5, max_iter=20, eps=1e-8):
     """A naive implementation of the Newton method."""
+
     def regularized_fn(params, z):
         return fn(params, z) + eps * jnp.linalg.norm(z) ** 2
 
     z, unflatten_z_fn = flatten_util.ravel_pytree(z_init)
     params, _ = flatten_util.ravel_pytree(params)
     for _ in range(max_iter):
-        grad = jax.grad(fn, argnums=1)(params, z)
+        grad = jax.grad(regularized_fn, argnums=1)(params, z)
         holomorphic = jnp.iscomplexobj(grad)
         hessian = jax.jacfwd(
             jax.jacrev(regularized_fn, argnums=1), argnums=1, holomorphic=holomorphic
@@ -225,8 +225,6 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         value, grad = jax.value_and_grad(meta_loss_fn)(params)
         naive_value, naive_grad = jax.value_and_grad(naive_meta_loss_fn)(params)
-
-        print(value, naive_value)
 
         params_flat, _ = flatten_util.ravel_pytree(params)
         expected_value = jnp.sum(jnp.abs(params_flat) ** 2)

@@ -1,4 +1,4 @@
-# mewtax: Differentiable minimization in jax using Newton's method.
+# Differentiable minimization in jax using Newton's method
 `v0.0.0`
 
 This project essentially repackages code from the [implicit layers tutorial](https://implicit-layers-tutorial.org/implicit_functions/) to provide a `minimize_newton` function.
