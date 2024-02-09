@@ -47,20 +47,9 @@ def minimize_newton(
     Returns:
         The pytree argmin of the function.
     """
-    z_init_flat, _unflatten_z_fn = flatten_util.ravel_pytree(
+    z_init_flat, unflatten_z_fn = flatten_util.ravel_pytree(
         z_init
     )  # type: ignore[no-untyped-call]
-
-    is_complex = jnp.iscomplexobj(z_init_flat)
-    if is_complex:
-        z_init_flat = jnp.concatenate([z_init_flat.real, z_init_flat.imag])
-
-    def unflatten_z_fn(z_flat: jnp.ndarray) -> PyTree:
-        if not is_complex:
-            return _unflatten_z_fn(z_flat)
-        z_flat_real, z_flat_imag = jnp.split(z_flat, 2)
-        z_flat = z_flat_real + 1j * z_flat_imag
-        return _unflatten_z_fn(z_flat)
 
     def flat_fn(params: PyTree, z_flat: jnp.ndarray) -> jnp.ndarray:
         regularization: jnp.ndarray = eps * jnp.linalg.norm(z_flat) ** 2
@@ -102,7 +91,7 @@ def _minimize_newton(
 
     def fixed_point_fn(z: jnp.ndarray) -> jnp.ndarray:
         grad: jnp.ndarray = jax.grad(fn, argnums=1)(a, z)
-        return z - grad
+        return z - grad.conj()
 
     return _newton_solve_fixed_point(
         fixed_point_fn,
@@ -187,13 +176,13 @@ def _newton_solve_fixed_point(
     max_iter: int,
 ) -> jnp.ndarray:
     """Solves for a fixed point of `fn` using the Newton method."""
-    assert not jnp.iscomplexobj(z_init)
+    holomorphic = jnp.iscomplexobj(z_init)
 
     def root_fn(z: jnp.ndarray) -> jnp.ndarray:
         return fn(z) - z
 
     def g_fn(z: jnp.ndarray) -> jnp.ndarray:
-        jac = jax.jacfwd(root_fn, holomorphic=False)(z)
+        jac = jax.jacfwd(root_fn, holomorphic=holomorphic)(z)
         z_next: jnp.ndarray = z - jnp.linalg.solve(jac, root_fn(z))
         return z_next
 
