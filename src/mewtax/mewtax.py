@@ -20,6 +20,7 @@ def minimize_newton(
     z_init: PyTree,
     tol: float = 1e-5,
     max_iter: int = 20,
+    eps: float = 1e-8,
 ) -> PyTree:
     """Minimizes `fn` using the Newton method.
 
@@ -40,16 +41,28 @@ def minimize_newton(
         max_iter: Maximum number of iterations for the solver. No more than this
             number of iterations is performed, regardless of whether the minimization
             has converged. Default value is 20.
+        eps: Small positive value used to regularize the minimization problem.
 
     Returns:
         The pytree argmin of the function.
     """
-    z_init_flat, unflatten_z_fn = flatten_util.ravel_pytree(
+    z_init_flat, _unflatten_z_fn = flatten_util.ravel_pytree(
         z_init
     )  # type: ignore[no-untyped-call]
 
-    def flat_fn(params: jnp.ndarray, z_flat: jnp.ndarray) -> jnp.ndarray:
-        return fn(params, unflatten_z_fn(z_flat))
+    is_complex = jnp.iscomplexobj(z_init_flat)
+    if is_complex:
+        z_init_flat = jnp.concatenate([z_init_flat.real, z_init_flat.imag])
+
+    def unflatten_z_fn(z_flat):
+        if not is_complex:
+            return _unflatten_z_fn(z_flat)
+        z_flat_real, z_flat_imag = jnp.split(z_flat, 2)
+        z_flat = z_flat_real + 1j * z_flat_imag
+        return _unflatten_z_fn(z_flat)
+
+    def flat_fn(params: PyTree, z_flat: jnp.ndarray) -> jnp.ndarray:
+        return fn(params, unflatten_z_fn(z_flat)) + eps * jnp.linalg.norm(z_flat)**2
 
     z_flat = _minimize_newton(
         flat_fn,
@@ -87,7 +100,7 @@ def _minimize_newton(
 
     def fixed_point_fn(z: jnp.ndarray) -> jnp.ndarray:
         grad: jnp.ndarray = jax.grad(fn, argnums=1)(a, z)
-        return z - grad.conj()
+        return z - grad
 
     return _newton_solve_fixed_point(
         fixed_point_fn,
@@ -172,15 +185,14 @@ def _newton_solve_fixed_point(
     max_iter: int,
 ) -> jnp.ndarray:
     """Solves for a fixed point of `fn` using the Newton method."""
-    holomorphic = jnp.iscomplexobj(z_init)
+    assert not jnp.iscomplexobj(z_init)
 
     def root_fn(z: jnp.ndarray) -> jnp.ndarray:
         return fn(z) - z
 
     def g_fn(z: jnp.ndarray) -> jnp.ndarray:
-        jac = jax.jacfwd(root_fn, holomorphic=holomorphic)(z)
+        jac = jax.jacfwd(root_fn, holomorphic=False)(z)
         z_next: jnp.ndarray = z - jnp.linalg.solve(jac, root_fn(z))
-        is_problematic_jac = jnp.allclose(jac, 0)
-        return jnp.where(is_problematic_jac, root_fn(z), z_next)
+        return z_next
 
     return _fwd_solve_fixed_point(g_fn, z_init, tol, max_iter)
