@@ -175,6 +175,9 @@ def _fwd_solve_fixed_point(
 
     init_carry = (0, z_init, fn(z_init))
     i, z_star, z_star_next = jax.lax.while_loop(cond_fn, body_fn, init_carry)
+    print(i)
+    print(z_star)
+    print(z_star_next)
     return jnp.where(
         jnp.asarray(i == 0) | ~jnp.any(jnp.isnan(z_star_next)),
         z_star_next,
