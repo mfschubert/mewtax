@@ -174,8 +174,14 @@ def _fwd_solve_fixed_point(
         return i + 1, z, fn(z)
 
     init_carry = (0, z_init, fn(z_init))
-    _, _, z_star_next = jax.lax.while_loop(cond_fn, body_fn, init_carry)
-    return z_star_next
+    i, z_star, z_star_next = jax.lax.while_loop(cond_fn, body_fn, init_carry)
+    # If a single iteration results in `nan`, return `nan`. Otherwise, return the last
+    # iteration which did not yield `nan` output.
+    return jnp.where(
+        jnp.asarray(i == 0) | ~jnp.any(jnp.isnan(z_star_next)),
+        z_star_next,
+        z_star,
+    )
 
 
 def _newton_solve_fixed_point(
