@@ -311,3 +311,23 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         grad = jax.jacrev(fn)(jnp.ones((4,)))
         onp.testing.assert_array_equal(grad, jnp.zeros((4, 4)))
+
+
+class OptimizePhaseTest(unittest.TestCase):
+    def test_optimize_phase_single(self):
+        target_phase = jnp.arange(8) * 2 * jnp.pi / 8
+        actual_phase = target_phase + jnp.pi / 4
+        actual_coeffs = jnp.exp(1j * actual_phase)
+
+        def loss_fn(actual_coeffs, phase_offset):
+            shifted_coeffs = actual_coeffs * jnp.exp(1j * phase_offset)
+            return jnp.sum(jnp.abs(shifted_coeffs - jnp.exp(1j * target_phase)) ** 2)
+
+        phase_offset = mewtax.minimize_newton(
+            fn=loss_fn,
+            params=actual_coeffs,
+            z_init=jnp.asarray(0.0),
+        )
+
+        coeffs = actual_coeffs * jnp.exp(1j * phase_offset)
+        onp.testing.assert_allclose(coeffs, jnp.exp(1j * target_phase))

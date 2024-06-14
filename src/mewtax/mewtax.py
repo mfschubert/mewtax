@@ -52,7 +52,7 @@ def minimize_newton(
     )  # type: ignore[no-untyped-call]
 
     def flat_fn(params: PyTree, z_flat: jnp.ndarray) -> jnp.ndarray:
-        regularization: jnp.ndarray = eps * jnp.linalg.norm(z_flat) ** 2
+        regularization: jnp.ndarray = eps * _linalg_norm_safe(z_flat) ** 2
         return fn(params, unflatten_z_fn(z_flat)) + regularization
 
     z_flat = _minimize_newton(
@@ -63,6 +63,14 @@ def minimize_newton(
         max_iter=max_iter,
     )
     return unflatten_z_fn(z_flat)
+
+
+def _linalg_norm_safe(z: jnp.ndarray) -> jnp.ndarray:
+    """Computes the norm of `z`, with special treatment to avoid `nan` gradients."""
+    is_all_zeros = jnp.allclose(z, 0.0)
+    z_safe = jnp.where(is_all_zeros, jnp.ones_like(z), z)
+    norm = jnp.linalg.norm(z_safe)
+    return jnp.where(is_all_zeros, jnp.zeros_like(norm), norm)
 
 
 @functools.partial(jax.custom_vjp, nondiff_argnums=(0, 3, 4))
@@ -153,14 +161,15 @@ def _fwd_solve_fixed_point(
     max_iter: int,
 ) -> jnp.ndarray:
     """Solve for a fixed point of `fn`."""
-    Carry = Tuple[int, jnp.ndarray, jnp.ndarray]
 
-    def cond_fn(carry: Carry) -> bool:
+    def cond_fn(carry: Tuple[int, jnp.ndarray, jnp.ndarray]) -> bool:
         i, z_prev, z = carry
         cond: bool = (jnp.linalg.norm(z_prev - z) > tol) & (i < max_iter)
         return cond
 
-    def body_fn(carry: Carry) -> Carry:
+    def body_fn(
+        carry: Tuple[int, jnp.ndarray, jnp.ndarray]
+    ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
         i, _, z = carry
         return i + 1, z, fn(z)
 
