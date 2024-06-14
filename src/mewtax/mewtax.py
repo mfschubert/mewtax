@@ -19,7 +19,7 @@ def minimize_newton(
     params: PyTree,
     z_init: PyTree,
     tol: float = 1e-5,
-    max_iter: int = 20,
+    max_iter: int = 50,
     eps: float = 1e-8,
 ) -> PyTree:
     """Minimizes `fn` using the Newton method.
