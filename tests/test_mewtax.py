@@ -14,7 +14,7 @@ import mewtax
 jax.config.update("jax_enable_x64", True)
 
 
-def minimize_newton_naive(fn, params, z_init, tol=1e-5, max_iter=20, eps=1e-8):
+def minimize_newton_naive(fn, params, z_init, tol=1e-5, max_iter=20, eps=1e-5):
     """A naive implementation of the Newton method."""
 
     def regularized_fn(params, z):
@@ -249,7 +249,7 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         fd_grad = jacfwd_fd(fn, delta=1e-4)(params)
         grad = jax.jacrev(fn, holomorphic=jnp.iscomplexobj(params))(params)
-        onp.testing.assert_allclose(grad, fd_grad, rtol=1e-2)
+        onp.testing.assert_allclose(grad, fd_grad, atol=1e-5, rtol=1e-5)
 
     @parameterized.expand(
         [
@@ -272,7 +272,7 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         fd_grad = jacfwd_fd(fn, delta=1e-4)(params)
         grad = jax.jacrev(fn, holomorphic=jnp.iscomplexobj(params))(params)
-        onp.testing.assert_allclose(grad, fd_grad, rtol=1e-2)
+        onp.testing.assert_allclose(grad, fd_grad, atol=1e-5, rtol=1e-5)
 
     @parameterized.expand(
         [

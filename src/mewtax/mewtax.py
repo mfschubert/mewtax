@@ -174,8 +174,8 @@ def _fwd_solve_fixed_point(
         return i + 1, z, fn(z)
 
     init_carry = (0, z_init, fn(z_init))
-    _, z_star, _ = jax.lax.while_loop(cond_fn, body_fn, init_carry)
-    return z_star
+    _, _, z_star_next = jax.lax.while_loop(cond_fn, body_fn, init_carry)
+    return z_star_next
 
 
 def _newton_solve_fixed_point(
