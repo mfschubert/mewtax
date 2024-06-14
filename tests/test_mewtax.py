@@ -14,7 +14,7 @@ import mewtax
 jax.config.update("jax_enable_x64", True)
 
 
-def minimize_newton_naive(fn, params, z_init, tol=1e-5, max_iter=20, eps=1e-8):
+def minimize_newton_naive(fn, params, z_init, tol=1e-5, max_iter=20, eps=1e-5):
     """A naive implementation of the Newton method."""
 
     def regularized_fn(params, z):
@@ -135,7 +135,11 @@ class MinimizeNewtonTest(unittest.TestCase):
         )
         z_init = tree_util.tree_map(_random_normal_like, keys, params)
         z_star = mewtax.minimize_newton(
-            fn=loss_fn, params=params, z_init=z_init, tol=1e-5, max_iter=100
+            fn=loss_fn,
+            params=params,
+            z_init=z_init,
+            tol=1e-5,
+            max_iter=100,
         )
         for a, b in zip(tree_util.tree_leaves(z_star), tree_util.tree_leaves(params)):
             onp.testing.assert_allclose(a, b, rtol=tol, atol=tol)
@@ -249,7 +253,7 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         fd_grad = jacfwd_fd(fn, delta=1e-4)(params)
         grad = jax.jacrev(fn, holomorphic=jnp.iscomplexobj(params))(params)
-        onp.testing.assert_allclose(grad, fd_grad, rtol=1e-2)
+        onp.testing.assert_allclose(grad, fd_grad, atol=1e-5, rtol=1e-5)
 
     @parameterized.expand(
         [
@@ -261,7 +265,7 @@ class MinimizeNewtonTest(unittest.TestCase):
     def test_gradient_matches_finite_difference_complex(self, params):
         # Verifies that the Newton gradients match finite difference gradients.
         def loss_fn(params, x):
-            return jnp.sum(jnp.abs(x - params) ** 2)
+            return jnp.sum(jnp.abs(x - params) ** 2) + 1e-5 * jnp.sum(jnp.abs(x) ** 2)
 
         def fn(params):
             return mewtax.minimize_newton(
@@ -272,7 +276,7 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         fd_grad = jacfwd_fd(fn, delta=1e-4)(params)
         grad = jax.jacrev(fn, holomorphic=jnp.iscomplexobj(params))(params)
-        onp.testing.assert_allclose(grad, fd_grad, rtol=1e-2)
+        onp.testing.assert_allclose(grad, fd_grad, atol=1e-5, rtol=1e-5)
 
     @parameterized.expand(
         [
@@ -311,3 +315,23 @@ class MinimizeNewtonTest(unittest.TestCase):
 
         grad = jax.jacrev(fn)(jnp.ones((4,)))
         onp.testing.assert_array_equal(grad, jnp.zeros((4, 4)))
+
+
+class OptimizePhaseTest(unittest.TestCase):
+    def test_optimize_phase_single(self):
+        target_phase = jnp.arange(8) * 2 * jnp.pi / 8
+        actual_phase = target_phase + jnp.pi / 4
+        actual_coeffs = jnp.exp(1j * actual_phase)
+
+        def loss_fn(actual_coeffs, phase_offset):
+            shifted_coeffs = actual_coeffs * jnp.exp(1j * phase_offset)
+            return jnp.sum(jnp.abs(shifted_coeffs - jnp.exp(1j * target_phase)) ** 2)
+
+        phase_offset = mewtax.minimize_newton(
+            fn=loss_fn,
+            params=actual_coeffs,
+            z_init=jnp.asarray(0.0),
+        )
+
+        coeffs = actual_coeffs * jnp.exp(1j * phase_offset)
+        onp.testing.assert_allclose(coeffs, jnp.exp(1j * target_phase), rtol=1e-6)
