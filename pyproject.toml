@@ -1,7 +1,7 @@
 [project]
 
 name = "mewtax"
-version = "v0.0.0"
+version = "v0.0.1"
 description = "Differentiable minimization in jax using Newton's method."
 keywords = ["jax", "differentiable optimization", "metalearning"]
 readme = "README.md"
