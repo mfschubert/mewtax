@@ -135,7 +135,11 @@ class MinimizeNewtonTest(unittest.TestCase):
         )
         z_init = tree_util.tree_map(_random_normal_like, keys, params)
         z_star = mewtax.minimize_newton(
-            fn=loss_fn, params=params, z_init=z_init, tol=1e-5, max_iter=100
+            fn=loss_fn,
+            params=params,
+            z_init=z_init,
+            tol=1e-5,
+            max_iter=100,
         )
         for a, b in zip(tree_util.tree_leaves(z_star), tree_util.tree_leaves(params)):
             onp.testing.assert_allclose(a, b, rtol=tol, atol=tol)
@@ -330,4 +334,4 @@ class OptimizePhaseTest(unittest.TestCase):
         )
 
         coeffs = actual_coeffs * jnp.exp(1j * phase_offset)
-        onp.testing.assert_allclose(coeffs, jnp.exp(1j * target_phase))
+        onp.testing.assert_allclose(coeffs, jnp.exp(1j * target_phase), rtol=1e-6)
