@@ -265,7 +265,7 @@ class MinimizeNewtonTest(unittest.TestCase):
     def test_gradient_matches_finite_difference_complex(self, params):
         # Verifies that the Newton gradients match finite difference gradients.
         def loss_fn(params, x):
-            return jnp.sum(jnp.abs(x - params) ** 2) + 1e-5 * jnp.sum(jnp.abs(x)**2)
+            return jnp.sum(jnp.abs(x - params) ** 2) + 1e-5 * jnp.sum(jnp.abs(x) ** 2)
 
         def fn(params):
             return mewtax.minimize_newton(
